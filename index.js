@@ -37,7 +37,6 @@ app.use(cors(corsOptions));
 
 app.get("/login", (req, res) => {
   console.log("/login");
-  const result = {};
   try {
     console.log(req.query);
     console.log(req.headers);
@@ -52,14 +51,12 @@ app.get("/login", (req, res) => {
       nonce: sessionId,
       client_id: clientId,
     };
-    result.status = 200;
-    result.body = `${authUrl}?${new URLSearchParams(queryParams)}`;
+    const spUrl = `${authUrl}?${new URLSearchParams(queryParams)}`;
+    return res.status(200).send(spUrl);
   } catch (err) {
     console.error(err);
-    result.status = err.response?.status || 500;
-    result.body = err.response?.data;
+    return res.status(err.status || 500).send("login error");
   }
-  return res.status(result.status).send(result.body);
 });
 
 app.get("/token", async (req, res) => {
@@ -103,45 +100,37 @@ app.get("/token", async (req, res) => {
       "Content-Type": "application/x-www-form-urlencoded",
     };
     const response = await axios.post(tokenUrl, params, { headers });
-    result.status = 200;
-    result.body = response.data;
+    return res.status(200).send(response.data);
   } catch (err) {
     console.error(err);
+    return res.status(err.status || 500).send("token error");
   }
-  return res.status(result.status).send(result.body);
 });
 
 app.post("/decodeToken", async (req, res) => {
   console.log("/decodeToken");
-  const result = {};
   try {
     const { id_token } = req.body;
     const pkVal = await jose.importJWK(jwksObject.private, encAlg);
-    const parsedToken = JSON.parse(id_token);
     const { plaintext, protectedHeader } = await jose.compactDecrypt(
-      parsedToken,
+      id_token,
       pkVal
     );
     const bodyToConvert = new TextDecoder().decode(plaintext);
     let result = await jose.decodeJwt(bodyToConvert);
     const [sid, uuid] = result.sub.split(",");
-    console.log(sid.indexOf("="));
-    console.log(sid.indexOf("s="));
-    result.status = 200;
-    result.body = {
+    const data = {
       sid: sid.substring(sid.indexOf("=") + 1, sid.length),
       uuid: uuid.substring(uuid.indexOf("=") + 1, uuid.length),
     };
+    return res.status(200).send(data);
   } catch (err) {
     console.error(err);
-    result.status = err.status || 500;
-    result.body = "error decrypting token";
+    return res.status(err.status || 500).send("decode error");
   }
-  return res.status(result.status).send(result.body);
 });
 
 app.get("/jwks", (req, res) => {
-  const result = {};
   try {
     const { public } = jwksObject;
     const finalObj = {
@@ -160,13 +149,11 @@ app.get("/jwks", (req, res) => {
         },
       ],
     };
-    result.status = 200;
-    result.body = finalObj;
+    return res.status(200).send(finalObj);
   } catch (err) {
-    result.status = err.status || 500;
-    result.body = {};
+    console.error(err);
+    return res.status(err.status || 500).send({});
   }
-  return res.status(result.status).send(result.body);
 });
 
 app.get("/test", async (req, res) => {
