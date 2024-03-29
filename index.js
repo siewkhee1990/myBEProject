@@ -4,9 +4,17 @@ const app = express();
 app.use(bodyParser.json());
 const PORT = 7000;
 const cors = require("cors");
-
+const allowedOrigins = process.env.ALLOWED_ORIGINS;
 const corsOptions = {
-  origin: "http://localhost:3000",
+  origin: function (origin, callback) {
+    // allow requests with no origin
+    // (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) === -1) {
+      return callback(null, false);
+    }
+    return callback(null, true);
+  },
   credentials: true,
 };
 app.use(cors(corsOptions));
